@@ -51,6 +51,7 @@ let selectedCategory='all';
 let bankFilter='both';
 let selectedMonths=['August'];
 let currentPage='overview';
+let bankBeforeStatements='both';
 let selectedYear=2026;
 let hiddenCategories=JSON.parse(localStorage.getItem('hiddenCategories')||'[]');
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -251,8 +252,9 @@ function renderKeywordManager(){
       <div class="keyword-list">${
         keywords.length
           ?keywords.map((keyword,index)=>`<div class="keyword-row">
-              <input data-edit="${encoded}" data-index="${index}" value="${escapeHtml(keyword)}" aria-label="${escapeHtml(category)} keyword">
+              <input data-edit="${encoded}" data-index="${index}" value="${escapeHtml(keyword)}" aria-label="${escapeHtml(category)} keyword" disabled>
               <button type="button" data-action="save" data-category="${encoded}" data-index="${index}">Save</button>
+              <button type="button" data-action="edit" data-category="${encoded}" data-index="${index}">Edit</button>
               <button type="button" data-action="delete" data-category="${encoded}" data-index="${index}" aria-label="Delete keyword">×</button>
             </div>`).join('')
           :'<div class="keyword-empty">No keywords yet.</div>'
@@ -266,6 +268,7 @@ function renderKeywordManager(){
 }
 
 function render(){
+  refreshMonthControls();
   renderStats();
   renderCategories();
   renderTransactions();
@@ -456,7 +459,28 @@ const pages={
 
 function showPage(name){
   if(!pages[name])name='overview';
+  const previousPage=currentPage;
+  if(name==='statements'&&previousPage!=='statements'){
+    bankBeforeStatements=bankFilter;
+    if(bankFilter==='both')bankFilter='lloyds';
+    el('typeFilter').hidden=true;
+    el('typeFilter').style.display='none';
+    el('bothBankButton').hidden=true;
+    document.querySelectorAll('[data-bank]').forEach(button=>button.classList.toggle('active',button.dataset.bank===bankFilter));
+    refreshMonthControls();
+  }else if(name!=='statements'&&previousPage==='statements'){
+    bankFilter=bankBeforeStatements;
+    el('typeFilter').hidden=false;
+    el('typeFilter').style.display='';
+    el('bothBankButton').hidden=false;
+    document.querySelectorAll('[data-bank]').forEach(button=>button.classList.toggle('active',button.dataset.bank===bankFilter));
+    refreshMonthControls();
+  }
+  const hideType=name==='overview'||name==='statements';
+  el('typeFilter').hidden=hideType;
+  el('typeFilter').style.display=hideType?'none':'';
   currentPage=name;
+  refreshMonthControls();
   document.querySelectorAll('.page').forEach(page=>page.classList.toggle('active',page.dataset.page===name));
   document.querySelectorAll('#navLinks a').forEach(link=>{
     const active=link.dataset.page===name;
@@ -482,7 +506,10 @@ addEventListener('hashchange',routeFromHash);
 function monthAvailable(month){return window.transactionData.some(t=>t.year===selectedYear&&t.month===month&&bankMatches(t))||uploadedStatements.some(s=>s.year===selectedYear&&s.month===month&&(bankFilter==='both'||s.bank===bankFilter))}
 function refreshMonthControls(){
   const picker=el('monthPicker');
-  picker.innerHTML=monthNames.map(month=>{const available=monthAvailable(month),checked=selectedMonths.includes(month);return `<label title="${available?'':'No transaction recorded for this month'}"><input type="checkbox" value="${month}" ${checked?'checked':''} ${available?'':'disabled'}><span>${month.slice(0,3)}</span></label>`}).join('');
+  const availableMonths=monthNames.filter(month=>monthAvailable(month));
+  const allSelected=currentPage!=='statements'&&availableMonths.length>0&&availableMonths.every(month=>selectedMonths.includes(month));
+  const allControl=currentPage==='statements'?'':`<label class="all-months-control" title="Select every available month"><input type="checkbox" data-all-months ${allSelected?'checked':''}><span>All</span></label>`;
+  picker.innerHTML=allControl+monthNames.map(month=>{const available=monthAvailable(month),checked=selectedMonths.includes(month);return `<label title="${available?'':'No transaction recorded for this month'}"><input type="checkbox" value="${month}" ${checked?'checked':''} ${available?'':'disabled'}><span>${month.slice(0,3)}</span></label>`}).join('');
   el('monthSelect').innerHTML=monthNames.map(month=>{const available=monthAvailable(month);return `<option value="${month}" ${available?'':'disabled'}>${month} ${selectedYear}${month==='August'?' · MTD':''}</option>`}).join('');
   el('monthSelect').value=selectedMonths[0]||'August';
 }
@@ -505,6 +532,8 @@ el('monthPicker').addEventListener('change',event=>{
     selectedMonths=[event.target.value];
     el('monthPicker').querySelectorAll('input').forEach(input=>input.checked=input.value===event.target.value);
     selected=statements.find(s=>s.key===event.target.value)||{key:event.target.value,label:`${event.target.value} ${selectedYear}`,days:30,in:0,out:0};
+  }else if(event.target.dataset.allMonths){
+    selectedMonths=event.target.checked?monthNames.filter(month=>monthAvailable(month)):[];
   }else selectedMonths=[...el('monthPicker').querySelectorAll('input:checked')].map(input=>input.value);
   render();
 });
@@ -534,7 +563,8 @@ document.querySelectorAll('[data-bank]').forEach(button=>button.addEventListener
   bankFilter=button.dataset.bank;
   document.querySelectorAll('[data-bank]').forEach(b=>b.classList.toggle('active',b===button));
   refreshMonthControls();
-  if(!monthAvailable(selected.key)){selectedMonths=[];}
+  selectedMonths=selectedMonths.filter(month=>monthAvailable(month));
+  if(!selectedMonths.length)selectedMonths=monthNames.find(month=>monthAvailable(month))?[monthNames.find(month=>monthAvailable(month))]:[];
   render();
 }));
 
@@ -584,10 +614,14 @@ el('keywordManager').addEventListener('click',event=>{
   if(action==='delete'){
     categoryKeywords[category].splice(index,1);
   }
+  if(action==='edit'){
+    const input=el('keywordManager').querySelector(`input[data-edit="${button.dataset.category}"][data-index="${index}"]`);
+    input.disabled=false;input.focus();return;
+  }
   if(action==='save'){
     const input=el('keywordManager').querySelector(`input[data-edit="${button.dataset.category}"][data-index="${index}"]`);
     const value=input.value.trim();
-    if(value)categoryKeywords[category][index]=value;
+    if(value){categoryKeywords[category][index]=value;input.disabled=true;}
   }
   if(action==='add'){
     const input=el('keywordManager').querySelector(`input[data-add="${button.dataset.category}"]`);
@@ -598,12 +632,6 @@ el('keywordManager').addEventListener('click',event=>{
   saveCategoryKeywords();
   renderKeywordManager();
   render();
-});
-
-el('editKeywords').addEventListener('click',()=>{
-  const manager=el('keywordManager'),button=el('editKeywords');
-  manager.hidden=false;
-  button.setAttribute('aria-expanded','true');
 });
 
 /* ----------------------------------------------------------------- boot --- */

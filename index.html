@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="statement-features.css" />
     <link rel="stylesheet" href="category-switch.css" />
+    <link rel="stylesheet" href="statements-ui.css" />
   </head>
   <body>
     <div class="app">
@@ -82,12 +83,12 @@
               <div class="filter-group">
                 <span class="filter-label">Account</span>
                 <div class="segmented" role="group" aria-label="Bank account">
-                  <button class="active" data-bank="both">Both</button>
+                  <button class="active" id="bothBankButton" data-bank="both">Both</button>
                   <button data-bank="lloyds">Lloyds</button>
                   <button data-bank="natwest">NatWest</button>
                 </div>
               </div>
-              <div class="filter-group">
+              <div class="filter-group" id="typeFilter">
                 <span class="filter-label">Type</span>
                 <div class="segmented" role="group" aria-label="Transaction type">
                   <button class="active" data-direction="all">All</button>
@@ -232,12 +233,9 @@
                   <h3>Category keywords</h3>
                   <p>View and manage the merchant keywords used for categorisation</p>
                 </div>
-                <div class="keyword-actions">
-                  <span class="keyword-saved" id="keywordSaved">Saved in this browser</span>
-                  <button class="button primary" id="editKeywords" type="button" aria-expanded="false">Edit keywords</button>
-                </div>
+                <span class="keyword-saved" id="keywordSaved">Saved in this browser</span>
               </div>
-              <div class="keyword-manager" id="keywordManager" hidden></div>
+              <div class="keyword-manager" id="keywordManager"></div>
             </article>
           </section>
 
