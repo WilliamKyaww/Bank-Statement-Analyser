@@ -20,8 +20,36 @@
 .filtered-total { margin: 14px 0 0; color: var(--muted); font-size: 12px; }
 .app-footer .filtered-total { margin: 0; color: var(--ink); font-weight: 600; }
 
+.transaction-search { width: min(240px, 34vw); min-height: 40px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 8px 11px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; }
+.transaction-search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.transaction-search::placeholder { color: var(--muted); }
+.transaction-list-total { padding: 10px 10px 13px; color: var(--ink); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.transaction-list-total.bottom { border-top: 1px solid var(--line); padding-block: 14px 4px; }
+
+.transaction-amount-filter { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+.amount-filter-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.amount-filter-heading strong { color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.amount-filter-controls { display: grid; grid-template-columns: 118px minmax(180px, 1fr) 118px auto; align-items: end; gap: 14px; }
+.amount-number { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 600; }
+.amount-number input { width: 100%; min-height: 38px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 7px 9px; background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; }
+.amount-number input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.amount-reset { min-height: 38px; margin: 0; white-space: nowrap; }
+
+.amount-meter { position: relative; height: 38px; }
+.amount-meter-rail, .amount-meter-fill { position: absolute; top: 17px; right: 0; left: 0; height: 4px; border-radius: 999px; }
+.amount-meter-rail { background: var(--line-strong); }
+.amount-meter-fill { background: var(--accent); }
+.amount-meter input[type="range"] { position: absolute; inset: 0; width: 100%; margin: 0; appearance: none; pointer-events: none; background: transparent; }
+.amount-meter input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+.amount-meter input[type="range"]::-webkit-slider-thumb { width: 18px; height: 18px; margin-top: -7px; appearance: none; border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent-line); cursor: grab; pointer-events: auto; }
+.amount-meter input[type="range"]::-moz-range-track { height: 4px; background: transparent; }
+.amount-meter input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px var(--accent-line); cursor: grab; pointer-events: auto; }
+.amount-meter input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+.amount-meter input[type="range"]:disabled { opacity: .35; }
+
 .month-picker button.all-months-control { appearance: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 8px 13px; background: transparent; color: var(--ink); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
 .month-picker button.all-months-control:hover { border-color: var(--accent-line); }
 .month-picker button.all-months-control.selected { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
-@media (max-width: 700px) { .keyword-row button { padding-inline: 6px; font-size: 10px; } .own-transfer-filter { width: 100%; } }
+@media (max-width: 900px) { .amount-filter-controls { grid-template-columns: 110px minmax(160px, 1fr) 110px; } .amount-reset { grid-column: 1 / -1; justify-self: start; } }
+@media (max-width: 700px) { .keyword-row button { padding-inline: 6px; font-size: 10px; } .own-transfer-filter { width: 100%; } .table-actions { width: 100%; } .transaction-search { width: 100%; flex: 1 1 100%; } .amount-filter-controls { grid-template-columns: 1fr 1fr; } .amount-meter { grid-column: 1 / -1; grid-row: 2; } .amount-reset { grid-column: 1 / -1; } }

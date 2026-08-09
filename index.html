@@ -197,20 +197,44 @@
               <div class="panel-heading">
                 <div>
                   <h3 id="transactionsHeading">Transactions</h3>
-                  <p>Filter the full list by account, transaction type or category</p>
+                  <p>Search and filter the full list by account, transaction type or category</p>
                 </div>
                 <div class="table-actions">
+                  <input class="transaction-search" id="transactionSearch" type="search" placeholder="Search transactions" aria-label="Search transactions" autocomplete="off" />
                   <select class="select" id="categorySelect" aria-label="Filter transactions by category">
                     <option value="all">All categories</option>
+                  </select>
+                  <select class="select" id="transactionSort" aria-label="Sort transactions by amount">
+                    <option value="desc">Amount: high to low</option>
+                    <option value="asc">Amount: low to high</option>
                   </select>
                   <button class="button subtle" id="viewAllTransactions" type="button">View statement →</button>
                 </div>
               </div>
+              <div class="transaction-amount-filter">
+                <div class="amount-filter-heading">
+                  <span>Amount range</span>
+                  <strong id="amountRangeLabel">£0.00 – £0.00</strong>
+                </div>
+                <div class="amount-filter-controls">
+                  <label class="amount-number"><span>Min £</span><input id="amountMinInput" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Minimum transaction amount" /></label>
+                  <div class="amount-meter" aria-label="Transaction amount range">
+                    <span class="amount-meter-rail"></span>
+                    <span class="amount-meter-fill" id="amountRangeFill"></span>
+                    <input id="amountMinRange" type="range" min="0" max="1" step="0.01" value="0" aria-label="Minimum amount slider" />
+                    <input id="amountMaxRange" type="range" min="0" max="1" step="0.01" value="1" aria-label="Maximum amount slider" />
+                  </div>
+                  <label class="amount-number"><span>Max £</span><input id="amountMaxInput" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Maximum transaction amount" /></label>
+                  <button class="button amount-reset" id="resetAmountRange" type="button">Reset range</button>
+                </div>
+              </div>
               <div class="transactions-table">
+                <div class="transaction-list-total" id="transactionListTotalTop" aria-live="polite"></div>
                 <div class="transaction-head" aria-hidden="true">
                   <span>Merchant</span><span>Date</span><span class="type">Type</span><span class="amount">Amount</span>
                 </div>
                 <div id="transactionsTable"></div>
+                <div class="transaction-list-total bottom" id="transactionListTotalBottom"></div>
               </div>
             </article>
           </section>

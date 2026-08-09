@@ -48,6 +48,10 @@ let categoryKeywords=JSON.parse(localStorage.getItem('categoryKeywords')||'null'
 let selected=statements[7];
 let selectedDirection='all';
 let selectedCategory='all';
+let transactionSearch='';
+let transactionAmountMin=null;
+let transactionAmountMax=null;
+let transactionSort='desc';
 let bankFilter='both';
 let selectedMonths=['August'];
 let currentPage='overview';
@@ -175,21 +179,75 @@ function renderCategories(){
   el('donutTotal').textContent=money(total).replace('.00','');
 }
 
+function transactionBaseRecords(){
+  return window.transactionData.filter(t=>
+    selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&
+    (selectedDirection==='all'||t.direction===selectedDirection));
+}
+
+function transactionMatchesSearch(t){
+  const query=transactionSearch.trim().toLocaleLowerCase();
+  if(!query)return true;
+  const direction=t.direction==='in'?'money in income credit':'money out expense debit';
+  return [t.description,t.date,t.type,t.bank,categoryFor(t),direction,String(t.amount),money(t.amount)]
+    .some(value=>String(value).toLocaleLowerCase().includes(query));
+}
+
+function transactionAmountBounds(){
+  const records=transactionBaseRecords();
+  if(!records.length)return {ceiling:1,min:0,max:0,disabled:true};
+  const ceiling=Math.max(1,Math.ceil(Math.max(...records.map(t=>t.amount))*100)/100);
+  let min=Math.min(ceiling,Math.max(0,transactionAmountMin??0));
+  let max=Math.min(ceiling,Math.max(0,transactionAmountMax??ceiling));
+  if(min>max)min=max;
+  return {ceiling,min,max,disabled:false};
+}
+
+function renderAmountControls(){
+  const bounds=transactionAmountBounds();
+  const controls=['amountMinInput','amountMaxInput','amountMinRange','amountMaxRange'].map(el);
+  controls.forEach(control=>control.disabled=bounds.disabled);
+  ['amountMinInput','amountMaxInput','amountMinRange','amountMaxRange'].forEach(id=>el(id).max=String(bounds.ceiling));
+  el('amountMinInput').value=bounds.min.toFixed(2);
+  el('amountMaxInput').value=bounds.max.toFixed(2);
+  el('amountMinRange').value=String(bounds.min);
+  el('amountMaxRange').value=String(bounds.max);
+  el('amountRangeLabel').textContent=`${money(bounds.min)} – ${money(bounds.max)}`;
+  const minPercent=bounds.min/bounds.ceiling*100;
+  const maxPercent=bounds.max/bounds.ceiling*100;
+  el('amountRangeFill').style.left=`${minPercent}%`;
+  el('amountRangeFill').style.right=`${100-maxPercent}%`;
+  el('transactionSort').value=transactionSort;
+}
+
+function filteredTransactionRecords(){
+  const bounds=transactionAmountBounds();
+  const direction=transactionSort==='asc'?1:-1;
+  return transactionBaseRecords().filter(t=>
+    (selectedCategory==='all'||categoryFor(t)===selectedCategory)&&transactionMatchesSearch(t)&&
+    t.amount>=bounds.min&&t.amount<=bounds.max)
+    .sort((a,b)=>(a.amount-b.amount)*direction);
+}
+
+function transactionTotalText(records){
+  const totalIn=records.filter(t=>t.direction==='in').reduce((sum,t)=>sum+t.amount,0);
+  const totalOut=records.filter(t=>t.direction==='out').reduce((sum,t)=>sum+t.amount,0);
+  const count=`${records.length} transaction${records.length===1?'':'s'}`;
+  if(selectedDirection==='in')return `${count} · ${money(totalIn)} money in`;
+  if(selectedDirection==='out')return `${count} · ${money(totalOut)} money out`;
+  return `${count} · ${money(totalIn)} in · ${money(totalOut)} out · ${money(totalIn-totalOut)} net`;
+}
+
 function renderTransactions(){
-  const categoryOptions=[...new Set(window.transactionData
-    .filter(t=>selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&
-      (selectedDirection==='all'||t.direction===selectedDirection))
-    .map(categoryFor))].sort();
+  renderAmountControls();
+  const categoryOptions=[...new Set(transactionBaseRecords().map(categoryFor))].sort();
   const select=el('categorySelect');
   select.innerHTML='<option value="all">All categories</option>'+
     categoryOptions.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
   if(selectedCategory!=='all'&&!categoryOptions.includes(selectedCategory))selectedCategory='all';
   select.value=selectedCategory;
 
-  const all=window.transactionData.filter(t=>
-    selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&
-    (selectedDirection==='all'||t.direction===selectedDirection)&&
-    (selectedCategory==='all'||categoryFor(t)===selectedCategory));
+  const all=filteredTransactionRecords();
 
   const counts=all.reduce((map,t)=>(map[t.description]=(map[t.description]||0)+1,map),{});
   const seen={};
@@ -197,6 +255,10 @@ function renderTransactions(){
   const heading=selectedDirection==='all'?'All':selectedDirection==='in'?'Money in':'Money out';
   el('transactionsHeading').textContent=
     `${heading} transactions${selectedCategory==='all'?'':' · '+selectedCategory} · ${label}`;
+
+  const totalText=transactionTotalText(all);
+  el('transactionListTotalTop').textContent=totalText;
+  el('transactionListTotalBottom').textContent=totalText;
 
   el('transactionsTable').innerHTML=all.map(t=>{
     seen[t.description]=(seen[t.description]||0)+1;
@@ -251,10 +313,7 @@ function renderFilteredTotals(){
     const total=Object.values(categoryTotals()).reduce((sum,value)=>sum+value,0);
     summary=`Filtered spend: ${money(total)}`;
   }else if(currentPage!=='statements'){
-    let records=analysisRecords();
-    if(currentPage==='transactions'&&selectedCategory!=='all'){
-      records=records.filter(t=>categoryFor(t)===selectedCategory);
-    }
+    const records=currentPage==='transactions'?filteredTransactionRecords():analysisRecords();
     const totalIn=records.filter(t=>t.direction==='in').reduce((sum,t)=>sum+t.amount,0);
     const totalOut=records.filter(t=>t.direction==='out').reduce((sum,t)=>sum+t.amount,0);
     summary=selectedDirection==='in'
@@ -616,6 +675,45 @@ el('ignoreOwnTransfers').addEventListener('change',event=>{
 
 el('categorySelect').addEventListener('change',event=>{
   selectedCategory=event.target.value;
+  renderTransactions();
+  renderFilteredTotals();
+});
+
+el('transactionSearch').addEventListener('input',event=>{
+  transactionSearch=event.target.value;
+  renderTransactions();
+  renderFilteredTotals();
+});
+
+function updateAmountRange(edge,rawValue){
+  const bounds=transactionAmountBounds();
+  const fallback=edge==='min'?0:bounds.ceiling;
+  const parsed=rawValue===''?fallback:Number(rawValue);
+  if(!Number.isFinite(parsed))return;
+  const value=Math.min(bounds.ceiling,Math.max(0,parsed));
+  if(edge==='min'){
+    transactionAmountMin=value;
+    if(value>bounds.max)transactionAmountMax=value;
+  }else{
+    transactionAmountMax=value;
+    if(value<bounds.min)transactionAmountMin=value;
+  }
+  renderTransactions();
+  renderFilteredTotals();
+}
+
+el('amountMinInput').addEventListener('change',event=>updateAmountRange('min',event.target.value));
+el('amountMaxInput').addEventListener('change',event=>updateAmountRange('max',event.target.value));
+el('amountMinRange').addEventListener('input',event=>updateAmountRange('min',event.target.value));
+el('amountMaxRange').addEventListener('input',event=>updateAmountRange('max',event.target.value));
+el('resetAmountRange').addEventListener('click',()=>{
+  transactionAmountMin=null;
+  transactionAmountMax=null;
+  renderTransactions();
+  renderFilteredTotals();
+});
+el('transactionSort').addEventListener('change',event=>{
+  transactionSort=event.target.value;
   renderTransactions();
 });
 
