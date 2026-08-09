@@ -1,0 +1,1 @@
+.month-picker .all-months-control.selected span,.month-picker .all-months-control input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}

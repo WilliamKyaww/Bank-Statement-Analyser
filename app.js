@@ -508,7 +508,7 @@ function refreshMonthControls(){
   const picker=el('monthPicker');
   const availableMonths=monthNames.filter(month=>monthAvailable(month));
   const allSelected=currentPage!=='statements'&&availableMonths.length>0&&availableMonths.every(month=>selectedMonths.includes(month));
-  const allControl=currentPage==='statements'?'':`<label class="all-months-control" title="Select every available month"><input type="checkbox" data-all-months ${allSelected?'checked':''}><span>All</span></label>`;
+  const allControl=currentPage==='statements'?'':`<label class="all-months-control ${allSelected?'selected':''}" title="Select every available month"><input type="checkbox" data-all-months ${allSelected?'checked':''}><span>All</span></label>`;
   picker.innerHTML=allControl+monthNames.map(month=>{const available=monthAvailable(month),checked=selectedMonths.includes(month);return `<label title="${available?'':'No transaction recorded for this month'}"><input type="checkbox" value="${month}" ${checked?'checked':''} ${available?'':'disabled'}><span>${month.slice(0,3)}</span></label>`}).join('');
   el('monthSelect').innerHTML=monthNames.map(month=>{const available=monthAvailable(month);return `<option value="${month}" ${available?'':'disabled'}>${month} ${selectedYear}${month==='August'?' · MTD':''}</option>`}).join('');
   el('monthSelect').value=selectedMonths[0]||'August';
