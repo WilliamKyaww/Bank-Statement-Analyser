@@ -54,6 +54,7 @@ let currentPage='overview';
 let bankBeforeStatements='both';
 let selectedYear=2026;
 let hiddenCategories=JSON.parse(localStorage.getItem('hiddenCategories')||'[]');
+let ignoreOwnTransfers=JSON.parse(localStorage.getItem('ignoreOwnTransfers')||'true');
 const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const uploadedStatements=[];
 
@@ -84,6 +85,12 @@ const categoryRank=name=>{const i=seriesOrder.indexOf(name);return i<0?(name==='
 
 const bankMatches=t=>bankFilter==='both'||t.bank.toLowerCase()===bankFilter;
 const yearMatches=t=>t.year===selectedYear;
+function isOwnTransfer(t){
+  const description=t.description.trim().toUpperCase();
+  return (t.bank==='Natwest'&&t.direction==='out'&&description==='WILLIAM')||
+    (t.bank==='Lloyds'&&t.direction==='in'&&description==='KYAW W');
+}
+const includedTransaction=t=>!ignoreOwnTransfers||!isOwnTransfer(t);
 
 function categoryFor(t){
   if(t.direction==='in')return 'Income';
@@ -98,7 +105,7 @@ function categoryFor(t){
 function categoryTotals(){
   const totals={};
   window.transactionData
-    .filter(t=>selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&t.direction==='out')
+    .filter(t=>selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&t.direction==='out')
     .forEach(t=>{const category=categoryFor(t);totals[category]=(totals[category]||0)+t.amount});
   return totals;
 }
@@ -106,10 +113,14 @@ function categoryTotals(){
 function viewStatements(){
   return selectedMonths.map(key=>{
     const base=statements.find(s=>s.key===key);
-    const natwest=window.transactionData.filter(t=>t.bank==='Natwest'&&t.year===selectedYear&&t.month===key);
+    const natwest=window.transactionData.filter(t=>t.bank==='Natwest'&&t.year===selectedYear&&t.month===key&&includedTransaction(t));
     const natwestIn=natwest.filter(t=>t.direction==='in').reduce((sum,t)=>sum+t.amount,0);
     const natwestOut=natwest.filter(t=>t.direction==='out').reduce((sum,t)=>sum+t.amount,0);
-    const lloydsIn=bankFilter==='natwest'||selectedYear!==2026?0:(base?.in||0);
+    const lloydsRows=window.transactionData.filter(t=>t.bank==='Lloyds'&&t.year===selectedYear&&t.month===key);
+    const excludedLloydsIncome=ignoreOwnTransfers
+      ?lloydsRows.filter(t=>isOwnTransfer(t)&&t.direction==='in').reduce((sum,t)=>sum+t.amount,0)
+      :0;
+    const lloydsIn=bankFilter==='natwest'||selectedYear!==2026?0:Math.max(0,(base?.in||0)-excludedLloydsIncome);
     const lloydsOut=bankFilter==='natwest'||selectedYear!==2026?0:(base?.out||0);
     return {
       key,label:`${key} ${selectedYear}`,days:base?.days||30,
@@ -121,7 +132,7 @@ function viewStatements(){
 
 function analysisRecords(){
   return window.transactionData.filter(t=>
-    selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&
+    selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&
     (selectedDirection==='all'||t.direction===selectedDirection));
 }
 
@@ -173,7 +184,7 @@ function renderTransactions(){
   select.value=selectedCategory;
 
   const all=window.transactionData.filter(t=>
-    selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&
+    selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&
     (selectedDirection==='all'||t.direction===selectedDirection)&&
     (selectedCategory==='all'||categoryFor(t)===selectedCategory));
 
@@ -226,6 +237,33 @@ function renderAnalysis(){
     :'<div class="empty">Select at least one month to see a breakdown.</div>';
 }
 
+function renderFilteredTotals(){
+  let summary='';
+  if(currentPage==='overview'){
+    const view=viewStatements();
+    const totalIn=view.reduce((sum,item)=>sum+item.in,0);
+    const totalOut=view.reduce((sum,item)=>sum+item.out,0);
+    summary=`Filtered: ${money(totalIn)} in · ${money(totalOut)} out`;
+  }else if(currentPage==='categories'){
+    const total=Object.values(categoryTotals()).reduce((sum,value)=>sum+value,0);
+    summary=`Filtered spend: ${money(total)}`;
+  }else if(currentPage!=='statements'){
+    let records=analysisRecords();
+    if(currentPage==='transactions'&&selectedCategory!=='all'){
+      records=records.filter(t=>categoryFor(t)===selectedCategory);
+    }
+    const totalIn=records.filter(t=>t.direction==='in').reduce((sum,t)=>sum+t.amount,0);
+    const totalOut=records.filter(t=>t.direction==='out').reduce((sum,t)=>sum+t.amount,0);
+    summary=selectedDirection==='in'
+      ?`Filtered money in: ${money(totalIn)}`
+      :selectedDirection==='out'
+        ?`Filtered money out: ${money(totalOut)}`
+        :`Filtered: ${money(totalIn)} in · ${money(totalOut)} out`;
+  }
+  el('filteredTotalTop').textContent=summary;
+  el('filteredTotalBottom').textContent=summary;
+}
+
 function renderStatement(){
   const isNatwest=bankFilter==='natwest';
   const upload=uploadedStatements.find(s=>s.bank===(isNatwest?'natwest':'lloyds')&&s.year===selectedYear&&s.month===selected.key);
@@ -239,8 +277,9 @@ function renderStatement(){
   el('downloadStatement').href=available?file:'#';
   el('downloadStatement').toggleAttribute('aria-disabled',!available);
   el('statementEmpty').hidden=available;
-  if(currentPage==='statements'&&available&&el('statementFrame').getAttribute('src')!==file){
-    el('statementFrame').src=file;
+  const viewerFile=available?`${file}${file.includes('#')?'&':'#'}toolbar=0&navpanes=0&view=FitH`:'';
+  if(currentPage==='statements'&&available&&el('statementFrame').getAttribute('src')!==viewerFile){
+    el('statementFrame').src=viewerFile;
   }else if(!available)el('statementFrame').removeAttribute('src');
 }
 
@@ -273,6 +312,7 @@ function render(){
   renderCategories();
   renderTransactions();
   renderAnalysis();
+  renderFilteredTotals();
   renderStatement();
   drawCharts();
 }
@@ -479,6 +519,7 @@ function showPage(name){
   const hideType=name==='overview'||name==='statements';
   el('typeFilter').hidden=hideType;
   el('typeFilter').style.display=hideType?'none':'';
+  el('ownTransferFilter').hidden=name==='statements';
   currentPage=name;
   refreshMonthControls();
   document.querySelectorAll('.page').forEach(page=>page.classList.toggle('active',page.dataset.page===name));
@@ -495,6 +536,7 @@ function showPage(name){
 
   if(name==='statements'){selectedMonths=[selected.key];refreshMonthControls();renderStatement();}
   else el('statementFrame').removeAttribute('src');
+  renderFilteredTotals();
   drawCharts();
 }
 
@@ -508,7 +550,7 @@ function refreshMonthControls(){
   const picker=el('monthPicker');
   const availableMonths=monthNames.filter(month=>monthAvailable(month));
   const allSelected=currentPage!=='statements'&&availableMonths.length>0&&availableMonths.every(month=>selectedMonths.includes(month));
-  const allControl=currentPage==='statements'?'':`<label class="all-months-control ${allSelected?'selected':''}" title="Select every available month"><input type="checkbox" data-all-months ${allSelected?'checked':''}><span>All</span></label>`;
+  const allControl=currentPage==='statements'?'':`<button type="button" class="all-months-control ${allSelected?'selected':''}" id="allMonthsButton" aria-pressed="${allSelected}" title="Select every available month">All</button>`;
   picker.innerHTML=allControl+monthNames.map(month=>{const available=monthAvailable(month),checked=selectedMonths.includes(month);return `<label title="${available?'':'No transaction recorded for this month'}"><input type="checkbox" value="${month}" ${checked?'checked':''} ${available?'':'disabled'}><span>${month.slice(0,3)}</span></label>`}).join('');
   el('monthSelect').innerHTML=monthNames.map(month=>{const available=monthAvailable(month);return `<option value="${month}" ${available?'':'disabled'}>${month} ${selectedYear}${month==='August'?' · MTD':''}</option>`}).join('');
   el('monthSelect').value=selectedMonths[0]||'August';
@@ -532,14 +574,27 @@ el('monthPicker').addEventListener('change',event=>{
     selectedMonths=[event.target.value];
     el('monthPicker').querySelectorAll('input').forEach(input=>input.checked=input.value===event.target.value);
     selected=statements.find(s=>s.key===event.target.value)||{key:event.target.value,label:`${event.target.value} ${selectedYear}`,days:30,in:0,out:0};
-  }else if(event.target.dataset.allMonths){
-    selectedMonths=event.target.checked?monthNames.filter(month=>monthAvailable(month)):[];
   }else selectedMonths=[...el('monthPicker').querySelectorAll('input:checked')].map(input=>input.value);
+  render();
+});
+
+el('monthPicker').addEventListener('click',event=>{
+  const button=event.target.closest('#allMonthsButton');
+  if(!button)return;
+  const availableMonths=monthNames.filter(month=>monthAvailable(month));
+  selectedMonths=button.classList.contains('selected')?[]:availableMonths;
   render();
 });
 
 el('yearSelect').addEventListener('change',event=>{
   selectedYear=Number(event.target.value);selectedMonths=[];selected={key:'',label:`${selectedYear}`,days:30,in:0,out:0};refreshMonthControls();render();
+});
+
+el('ignoreOwnTransfers').checked=ignoreOwnTransfers;
+el('ignoreOwnTransfers').addEventListener('change',event=>{
+  ignoreOwnTransfers=event.target.checked;
+  localStorage.setItem('ignoreOwnTransfers',JSON.stringify(ignoreOwnTransfers));
+  render();
 });
 
 el('categorySelect').addEventListener('change',event=>{

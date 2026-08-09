@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="category-switch.css" />
     <link rel="stylesheet" href="statements-ui.css" />
     <link rel="stylesheet" href="all-months.css" />
+    <link rel="stylesheet" href="polish-overrides.css" />
   </head>
   <body>
     <div class="app">
@@ -105,7 +106,16 @@
                 <span class="filter-label">Year</span>
                 <select class="select" id="yearSelect" aria-label="Select year"></select>
               </div>
+              <div class="filter-group own-transfer-filter" id="ownTransferFilter">
+                <span class="filter-label">Transfers</span>
+                <label class="switch-label" title="Exclude transfers between your NatWest and Lloyds accounts from calculations">
+                  <input id="ignoreOwnTransfers" type="checkbox" checked />
+                  <span aria-hidden="true"></span>
+                  <em>Ignore my own transfers</em>
+                </label>
+              </div>
             </div>
+            <p class="filtered-total" id="filteredTotalTop" aria-live="polite"></p>
           </div>
         </section>
 
@@ -267,6 +277,7 @@
 
         <footer class="app-footer">
           <span>Data from Lloyds monthly statements and one NatWest statement · May–Aug 2026 overlap</span>
+          <strong class="filtered-total" id="filteredTotalBottom"></strong>
           <span>Last updated 09 Aug 2026</span>
         </footer>
       </div>
