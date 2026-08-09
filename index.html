@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spendwise · Monthly expenses</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="statement-features.css" />
+    <link rel="stylesheet" href="category-switch.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- ================= Sidebar ================= -->
+      <aside class="sidebar" id="sidebar">
+        <div class="brand"><span class="brand-mark">✦</span><span>spendwise</span></div>
+
+        <nav aria-label="Main navigation">
+          <p class="nav-section">Menu</p>
+          <div class="nav-links" id="navLinks">
+            <a href="#/overview" data-page="overview">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+              Overview
+            </a>
+            <a href="#/analysis" data-page="analysis">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 16v-5"/><path d="M11 16V6"/><path d="M16 16v-8"/><path d="M21 16v-3"/></svg>
+              Analysis
+            </a>
+            <a href="#/transactions" data-page="transactions">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></svg>
+              Transactions
+            </a>
+            <a href="#/categories" data-page="categories">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 9 9h-9Z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15Z"/></svg>
+              Categories
+            </a>
+            <a href="#/keywords" data-page="keywords">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h.01"/><path d="M3 6.5A3.5 3.5 0 0 1 6.5 3h4.7a2 2 0 0 1 1.42.59l7.8 7.8a2 2 0 0 1 0 2.82l-4.7 4.7a2 2 0 0 1-2.83 0l-7.8-7.8A2 2 0 0 1 3 9.7Z"/></svg>
+              Keywords
+            </a>
+            <a href="#/statements" data-page="statements">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>
+              Statements
+            </a>
+          </div>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="account-chip">
+            <div class="avatar">WK</div>
+            <div><strong>Win Khant Kyaw</strong><small>Classic account</small></div>
+          </div>
+          <p class="sidebar-note">Your money, made clearer.</p>
+        </div>
+      </aside>
+
+      <div class="app-body">
+        <!-- ================= Topbar ================= -->
+        <header class="topbar">
+          <div>
+            <button class="nav-toggle" id="navToggle" aria-label="Open navigation" aria-expanded="false">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+            </button>
+            <div>
+              <p class="eyebrow" id="pageEyebrow">Personal finance / 2026</p>
+              <h1 id="pageTitle">Overview</h1>
+              <p class="page-sub" id="pageSub">Here’s how your spending is shaping up.</p>
+            </div>
+          </div>
+        </header>
+
+        <!-- ================= Global filters ================= -->
+        <section class="filterbar" id="filterBar" aria-label="Filters">
+          <div class="filterbar-inner">
+            <div class="filter-row">
+              <span class="filter-label">Months</span>
+              <div class="month-picker" id="monthPicker"></div>
+            </div>
+            <div class="filter-row secondary">
+              <div class="filter-group">
+                <span class="filter-label">Account</span>
+                <div class="segmented" role="group" aria-label="Bank account">
+                  <button class="active" data-bank="both">Both</button>
+                  <button data-bank="lloyds">Lloyds</button>
+                  <button data-bank="natwest">NatWest</button>
+                </div>
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">Type</span>
+                <div class="segmented" role="group" aria-label="Transaction type">
+                  <button class="active" data-direction="all">All</button>
+                  <button data-direction="in">In</button>
+                  <button data-direction="out">Out</button>
+                </div>
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">Focus</span>
+                <select class="select" id="monthSelect" aria-label="Focus month"></select>
+              </div>
+              <div class="filter-group">
+                <span class="filter-label">Year</span>
+                <select class="select" id="yearSelect" aria-label="Select year"></select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="content">
+          <!-- ================= Overview ================= -->
+          <section class="page" data-page="overview">
+            <div class="stats-grid" aria-label="Monthly summary">
+              <article class="stat-card accent">
+                <div class="stat-label">Money out <span class="info" title="Total leaving your accounts across the selected months">i</span></div>
+                <div class="stat-value" id="moneyOut">£0.00</div>
+                <div class="stat-foot"><span class="trend down" id="outTrend">—</span><span>vs previous month</span></div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-label">Money in <span class="info" title="Total arriving in your accounts across the selected months">i</span></div>
+                <div class="stat-value" id="moneyIn">£0.00</div>
+                <div class="stat-foot positive">Income received this month</div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-label">Net movement <span class="info" title="Money in less money out">i</span></div>
+                <div class="stat-value" id="netMovement">£0.00</div>
+                <div class="stat-foot" id="netFoot">Money in less money out</div>
+              </article>
+              <article class="stat-card">
+                <div class="stat-label">Avg. daily spend <span class="info" title="Money out divided by the days in the statement period">i</span></div>
+                <div class="stat-value" id="dailySpend">£0.00</div>
+                <div class="stat-foot" id="statementNote">Based on statement period</div>
+              </article>
+            </div>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Monthly cash flow</h3>
+                  <p>Money in compared with money out across the months you’ve selected</p>
+                </div>
+                <span class="legend">
+                  <span><i style="background:var(--s1)"></i>Money in</span>
+                  <span><i style="background:var(--s2)"></i>Money out</span>
+                </span>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="trendChart" aria-label="Monthly money in and money out chart" role="img"></canvas>
+                <div class="chart-tip" id="trendTip" role="status"></div>
+              </div>
+            </article>
+          </section>
+
+          <!-- ================= Analysis ================= -->
+          <section class="page" data-page="analysis">
+            <div class="analysis-summary">
+              <div class="summary-card">
+                <span class="result-label" id="analysisLabel">Selected months</span>
+                <strong id="analysisTotal">£0.00</strong>
+              </div>
+              <div class="summary-card">
+                <span class="result-label">Transactions</span>
+                <strong id="analysisCount">0</strong>
+              </div>
+              <div class="summary-card">
+                <span class="result-label">Average per month</span>
+                <strong id="analysisAverage">£0.00</strong>
+              </div>
+            </div>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Month by month</h3>
+                  <p>How the selected accounts and transaction type break down per month</p>
+                </div>
+              </div>
+              <div class="breakdown" id="analysisBreakdown"></div>
+            </article>
+          </section>
+
+          <!-- ================= Transactions ================= -->
+          <section class="page" data-page="transactions">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3 id="transactionsHeading">Transactions</h3>
+                  <p>Filter the full list by account, transaction type or category</p>
+                </div>
+                <div class="table-actions">
+                  <select class="select" id="categorySelect" aria-label="Filter transactions by category">
+                    <option value="all">All categories</option>
+                  </select>
+                  <button class="button subtle" id="viewAllTransactions" type="button">View statement →</button>
+                </div>
+              </div>
+              <div class="transactions-table">
+                <div class="transaction-head" aria-hidden="true">
+                  <span>Merchant</span><span>Date</span><span class="type">Type</span><span class="amount">Amount</span>
+                </div>
+                <div id="transactionsTable"></div>
+              </div>
+            </article>
+          </section>
+
+          <!-- ================= Categories ================= -->
+          <section class="page" data-page="categories">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Where it goes</h3>
+                  <p>Spending grouped by the merchant keywords on the Keywords page</p>
+                </div>
+                <div class="category-actions"><button class="button" id="manageKeywords" type="button">Manage keywords</button></div>
+              </div>
+              <div class="category-layout">
+                <div class="donut-area">
+                  <canvas id="categoryChart" aria-label="Expense categories chart" role="img"></canvas>
+                  <div class="donut-total"><strong id="donutTotal">£0</strong><span>total spend</span></div>
+                  <div class="chart-tip" id="donutTip" role="status"></div>
+                </div>
+                <div class="category-list" id="categoryList"></div>
+              </div>
+            </article>
+          </section>
+
+          <!-- ================= Keywords ================= -->
+          <section class="page" data-page="keywords">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <h3>Category keywords</h3>
+                  <p>View and manage the merchant keywords used for categorisation</p>
+                </div>
+                <div class="keyword-actions">
+                  <span class="keyword-saved" id="keywordSaved">Saved in this browser</span>
+                  <button class="button primary" id="editKeywords" type="button" aria-expanded="false">Edit keywords</button>
+                </div>
+              </div>
+              <div class="keyword-manager" id="keywordManager" hidden></div>
+            </article>
+          </section>
+
+          <!-- ================= Statements ================= -->
+          <section class="page" data-page="statements">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Original document</p>
+                  <h3 id="statementTitle">Bank statement</h3>
+                  <p>Use the Account and Focus controls above to choose which statement to read</p>
+                </div>
+                <a class="button primary" id="downloadStatement" href="#" target="_blank" rel="noopener">Open in new tab ↗</a>
+              </div>
+              <div class="statement-meta">
+                <span>Account <b id="statementBank">Lloyds</b></span>
+                <span>Period <b id="statementPeriod">—</b></span>
+                <span>File <b id="statementFile">—</b></span>
+              </div>
+              <div class="statement-viewer">
+                <iframe id="statementFrame" title="Bank statement PDF"></iframe>
+                <div class="statement-empty" id="statementEmpty" hidden>No transaction recorded for this month and account.</div>
+              </div>
+              <div class="statement-upload"><div><strong>Attach a new bank statement</strong><p>PDFs are added to this browser session and can be viewed from the selected bank and month.</p></div><div class="upload-controls"><select class="select" id="uploadBank" aria-label="Bank for uploaded statement"><option value="lloyds">Lloyds</option><option value="natwest">NatWest</option></select><input id="statementUpload" type="file" accept="application/pdf"><button class="button primary" id="attachStatement" type="button">Attach PDF</button></div><p class="upload-status" id="uploadStatus" role="status"></p></div>
+            </article>
+          </section>
+        </div>
+
+        <footer class="app-footer">
+          <span>Data from Lloyds monthly statements and one NatWest statement · May–Aug 2026 overlap</span>
+          <span>Last updated 09 Aug 2026</span>
+        </footer>
+      </div>
+    </div>
+
+    <script src="transactions-data.js"></script>
+    <script src="natwest-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

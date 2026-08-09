@@ -1,0 +1,14 @@
+# Private bank statements and extracted transaction data
+LLoyds/
+Natwest/
+**/*.pdf
+transactions-data.js
+natwest-data.js
+
+# Local browser/build/editor files
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+dist/
+.vscode/
