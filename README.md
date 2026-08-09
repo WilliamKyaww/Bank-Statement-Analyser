@@ -2,7 +2,7 @@
 
 A local, browser-based dashboard for viewing and analysing bank statement transactions. It includes monthly cash-flow charts, expense categories, transaction filters, Lloyds/NatWest account filtering, statement viewing, editable categorisation keywords, and multi-month analysis.
 
-**Warning: it's vibe coded. It's meant to be just a quick project to help me manage my finances. Hopefully you'll find it useful.**
+**Warning: This project is vibe coded. It’s just a quick project I made to help me manage my finances. Hopefully you’ll find it useful too!**
 
 ## Privacy
 
