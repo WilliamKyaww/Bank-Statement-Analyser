@@ -37,9 +37,9 @@ const defaultCategoryKeywords={
 
 window.transactionData=window.transactionData||[];
 window.natwestTransactions=window.natwestTransactions||[];
-window.transactionData.forEach(t=>{t.bank='Lloyds';t.year=2026});
+window.transactionData.forEach(t=>{t.bank=t.bank||'Lloyds';t.year=t.year||2026});
 window.natwestTransactions.forEach(t=>{t.month=natwestMonthNames[t.month]||t.month});
-window.natwestTransactions.forEach(t=>t.year=2026);
+window.natwestTransactions.forEach(t=>t.year=t.year||2026);
 window.transactionData.push(...window.natwestTransactions);
 
 /* --------------------------------------------------------------- state --- */
@@ -93,12 +93,12 @@ function isOwnTransfer(t){
 const includedTransaction=t=>!ignoreOwnTransfers||!isOwnTransfer(t);
 
 function categoryFor(t){
-  if(t.direction==='in')return 'Income';
   const text=t.description.toUpperCase();
   for(const [category,keywords] of Object.entries(categoryKeywords)){
     if(keywords.some(keyword=>text.includes(keyword.toUpperCase())))return category;
   }
-  if(t.type==='FPO')return 'Transfers';
+  if(t.type==='FPI'||t.type==='FPO'||t.type==='Mobile/Online Transaction')return 'Transfers';
+  if(t.direction==='in')return 'Income';
   return 'Other';
 }
 
@@ -176,7 +176,10 @@ function renderCategories(){
 }
 
 function renderTransactions(){
-  const categoryOptions=Object.keys(categoryTotals()).sort();
+  const categoryOptions=[...new Set(window.transactionData
+    .filter(t=>selectedMonths.includes(t.month)&&yearMatches(t)&&bankMatches(t)&&includedTransaction(t)&&
+      (selectedDirection==='all'||t.direction===selectedDirection))
+    .map(categoryFor))].sort();
   const select=el('categorySelect');
   select.innerHTML='<option value="all">All categories</option>'+
     categoryOptions.map(category=>`<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join('');
@@ -554,6 +557,13 @@ function refreshMonthControls(){
   picker.innerHTML=allControl+monthNames.map(month=>{const available=monthAvailable(month),checked=selectedMonths.includes(month);return `<label title="${available?'':'No transaction recorded for this month'}"><input type="checkbox" value="${month}" ${checked?'checked':''} ${available?'':'disabled'}><span>${month.slice(0,3)}</span></label>`}).join('');
   el('monthSelect').innerHTML=monthNames.map(month=>{const available=monthAvailable(month);return `<option value="${month}" ${available?'':'disabled'}>${month} ${selectedYear}${month==='August'?' · MTD':''}</option>`}).join('');
   el('monthSelect').value=selectedMonths[0]||'August';
+  if(currentPage!=='statements'){
+    const allOption=document.createElement('option');
+    allOption.value='all';
+    allOption.textContent='All months';
+    el('monthSelect').prepend(allOption);
+    if(allSelected)el('monthSelect').value='all';
+  }
 }
 function refreshYearSelect(){
   const years=[...new Set([2026,...window.transactionData.map(t=>t.year),...uploadedStatements.map(s=>s.year)])].sort((a,b)=>b-a);
@@ -562,6 +572,13 @@ function refreshYearSelect(){
 refreshYearSelect();refreshMonthControls();
 
 el('monthSelect').addEventListener('change',event=>{
+  if(event.target.value==='all'&&currentPage!=='statements'){
+    const availableMonths=monthNames.filter(month=>monthAvailable(month));
+    selectedMonths=availableMonths;
+    selected=statements.find(s=>s.key===availableMonths[0])||{key:availableMonths[0]||'',label:`${selectedYear}`,days:30,in:0,out:0};
+    render();
+    return;
+  }
   selected=statements.find(s=>s.key===event.target.value);
   if(!selected)selected={key:event.target.value,label:`${event.target.value} ${selectedYear}`,days:30,in:0,out:0};
   selectedMonths=[selected.key];

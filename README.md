@@ -53,3 +53,21 @@ The Statements page also lets you attach a PDF and choose whether it is Lloyds o
 5. Use the Keywords page to update merchant categorisation rules.
 
 If you add a new statement format or want new PDFs to contribute to the charts, update the local transaction extraction data without committing it.
+
+## Refreshing transaction data
+
+With Poppler's `pdftotext` command installed, rebuild and validate both private transaction files with:
+
+```powershell
+.\scripts\refresh-transaction-data.ps1
+```
+
+The Lloyds parser reads every page of every `YYYY_Month_Statement.pdf` file and refuses to update the data unless its transaction totals exactly match the Money In and Money Out figures printed on each PDF.
+
+NatWest statements contain both incoming and outgoing `Mobile/Online Transaction` rows. The NatWest parser determines their direction from the signed amount in the PDF: values prefixed with a minus sign are money out, while unsigned values are money in. To refresh a specific NatWest file separately, use:
+
+```powershell
+.\scripts\parse-natwest-statement.ps1 -InputPdf ".\Natwest\2026_May-August_Natwest_Statement.pdf"
+```
+
+The generated `transactions-data.js` and `natwest-data.js` files remain local because they are covered by `.gitignore`.
