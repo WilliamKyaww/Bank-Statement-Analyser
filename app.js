@@ -4,7 +4,7 @@
 
 /* ---------------------------------------------------------------- data --- */
 
-const statements=[
+const fallbackStatements=[
   {key:'January',label:'January 2026',in:688.83,out:1033.32,days:31,categories:{Housing:49.99,Food:365.00,Transport:76.00,Subscriptions:107.92,Shopping:74.41,Transfers:359.00}},
   {key:'February',label:'February 2026',in:2181,out:1010.59,days:28,categories:{Housing:49.99,Food:318.54,Transport:103.00,Subscriptions:107.92,Shopping:71.14,Transfers:360.00}},
   {key:'March',label:'March 2026',in:41.98,out:1215.48,days:31,categories:{Housing:49.99,Food:605.20,Transport:98.50,Subscriptions:129.46,Shopping:112.33,Transfers:220.00}},
@@ -12,15 +12,19 @@ const statements=[
   {key:'May',label:'May 2026',in:920.99,out:1110.56,days:31,categories:{Housing:66.82,Food:236.34,Transport:32.50,Subscriptions:118.95,Shopping:135.96,Transfers:520.00}},
   {key:'June',label:'June 2026',in:1700,out:1568.58,days:30,categories:{Housing:66.82,Food:527.40,Transport:124.75,Subscriptions:131.94,Shopping:177.67,Transfers:540.00}},
   {key:'July',label:'July 2026',in:1700,out:1298.27,days:31,categories:{Housing:66.82,Food:440.00,Transport:108.20,Subscriptions:131.94,Shopping:151.31,Transfers:400.00}},
-  {key:'August',label:'August 2026 · MTD',in:400,out:900.41,days:9,categories:{Housing:46.82,Food:222.36,Transport:56.00,Subscriptions:65.98,Shopping:48.84,Transfers:460.41}}
+  {key:'August',label:'August 2026 · MTD',in:2385,out:2893.39,days:19,categories:{}}
 ];
 
-const statementFiles={
+const fallbackStatementFiles={
   January:'LLoyds/2026_January_Statement.pdf',February:'LLoyds/2026_February_Statement.pdf',
   March:'LLoyds/2026_March_Statement.pdf',April:'LLoyds/2026_April_Statement.pdf',
   May:'LLoyds/2026_May_Statement.pdf',June:'LLoyds/2026_June_Statement.pdf',
   July:'LLoyds/2026_July_Statement.pdf',August:'LLoyds/2026_August_Statement.pdf'
 };
+const statements=(window.lloydsStatementMeta?.length
+  ?window.lloydsStatementMeta.map(item=>({key:item.month,year:item.year,in:item.moneyIn,out:item.moneyOut,days:item.days,file:item.file,label:`${item.month} ${item.year}`}))
+  :fallbackStatements.map(item=>({...item,year:2026,file:fallbackStatementFiles[item.key]})));
+const statementFor=(month,year)=>statements.find(item=>item.key===month&&item.year===year);
 const natwestStatementFile='Natwest/Natwest Bank Statement.pdf';
 const natwestMonthNames={May:'May',Jun:'June',Jul:'July',Aug:'August'};
 
@@ -114,24 +118,29 @@ function categoryTotals(){
   return totals;
 }
 
+function monthSummary(key){
+  const rawRows=window.transactionData.filter(t=>
+    t.year===selectedYear&&t.month===key&&bankMatches(t));
+  const rows=rawRows.filter(includedTransaction);
+  const lloydsMeta=bankFilter==='natwest'?null:statementFor(key,selectedYear);
+  const rowDays=rows.reduce((latest,t)=>Math.max(latest,Number.parseInt(t.date,10)||0),0);
+  const days=Math.max(rowDays,lloydsMeta?.days||0);
+  const daysInMonth=new Date(selectedYear,monthNames.indexOf(key)+1,0).getDate();
+  const hasLloydsData=window.transactionData.some(t=>t.bank==='Lloyds');
+  const fallbackToMeta=!rawRows.length&&Boolean(lloydsMeta)&&!hasLloydsData;
+  const moneyIn=fallbackToMeta?lloydsMeta.in:rows.filter(t=>t.direction==='in').reduce((sum,t)=>sum+t.amount,0);
+  const moneyOut=fallbackToMeta?lloydsMeta.out:rows.filter(t=>t.direction==='out').reduce((sum,t)=>sum+t.amount,0);
+  return {
+    key,
+    label:`${key} ${selectedYear}${days>0&&days<daysInMonth?' · MTD':''}`,
+    days:days||daysInMonth,
+    in:moneyIn,
+    out:moneyOut
+  };
+}
+
 function viewStatements(){
-  return selectedMonths.map(key=>{
-    const base=statements.find(s=>s.key===key);
-    const natwest=window.transactionData.filter(t=>t.bank==='Natwest'&&t.year===selectedYear&&t.month===key&&includedTransaction(t));
-    const natwestIn=natwest.filter(t=>t.direction==='in').reduce((sum,t)=>sum+t.amount,0);
-    const natwestOut=natwest.filter(t=>t.direction==='out').reduce((sum,t)=>sum+t.amount,0);
-    const lloydsRows=window.transactionData.filter(t=>t.bank==='Lloyds'&&t.year===selectedYear&&t.month===key);
-    const excludedLloydsIncome=ignoreOwnTransfers
-      ?lloydsRows.filter(t=>isOwnTransfer(t)&&t.direction==='in').reduce((sum,t)=>sum+t.amount,0)
-      :0;
-    const lloydsIn=bankFilter==='natwest'||selectedYear!==2026?0:Math.max(0,(base?.in||0)-excludedLloydsIncome);
-    const lloydsOut=bankFilter==='natwest'||selectedYear!==2026?0:(base?.out||0);
-    return {
-      key,label:`${key} ${selectedYear}`,days:base?.days||30,
-      in:lloydsIn+(bankFilter==='lloyds'?0:natwestIn),
-      out:lloydsOut+(bankFilter==='lloyds'?0:natwestOut)
-    };
-  });
+  return selectedMonths.map(monthSummary);
 }
 
 function analysisRecords(){
@@ -147,19 +156,22 @@ function renderStats(){
   const totalIn=view.reduce((sum,s)=>sum+s.in,0);
   const totalOut=view.reduce((sum,s)=>sum+s.out,0);
   const totalDays=view.reduce((sum,s)=>sum+s.days,0);
-  const previous=statements[Math.max(0,statements.indexOf(selected)-1)];
+  const single=view.length===1?view[0]:null;
+  const selectedIndex=single?monthNames.indexOf(single.key):-1;
+  const previous=selectedIndex>0?monthSummary(monthNames[selectedIndex-1]):null;
+  const hasComparison=Boolean(single&&previous&&previous.out>0);
 
   el('moneyOut').textContent=money(totalOut);
   el('moneyIn').textContent=money(totalIn);
   el('netMovement').textContent=money(totalIn-totalOut);
   el('dailySpend').textContent=money(totalDays?totalOut/totalDays:0);
-  el('outTrend').textContent=view.length===1
-    ?`${Math.abs((selected.out-previous.out)/previous.out*100).toFixed(0)}% ${selected.out>previous.out?'up':'down'}`
+  el('outTrend').textContent=hasComparison
+    ?`${Math.abs((single.out-previous.out)/previous.out*100).toFixed(0)}% ${single.out>previous.out?'up':'down'}`
     :'—';
-  el('outTrend').className=`trend ${view.length===1&&selected.out>previous.out?'down':'positive'}`;
+  el('outTrend').className=`trend ${hasComparison&&single.out>previous.out?'down':'positive'}`;
   el('netFoot').textContent=totalIn>=totalOut?'Positive movement':'Spend exceeded income';
-  el('statementNote').textContent=view.length===1
-    ?(selected.days<28?'Month to date':'Average per calendar day')
+  el('statementNote').textContent=single
+    ?(single.label.includes('MTD')?'Month to date':'Average per calendar day')
     :`Across ${view.length} selected months`;
 }
 
@@ -329,9 +341,9 @@ function renderFilteredTotals(){
 function renderStatement(){
   const isNatwest=bankFilter==='natwest';
   const upload=uploadedStatements.find(s=>s.bank===(isNatwest?'natwest':'lloyds')&&s.year===selectedYear&&s.month===selected.key);
-  const file=upload?.url||(isNatwest?natwestStatementFile:statementFiles[selected.key]);
+  const file=upload?.url||(isNatwest?natwestStatementFile:statementFor(selected.key,selectedYear)?.file);
   const available=monthAvailable(selected.key)&&Boolean(file);
-  const period=selected.label.replace(' · MTD','');
+  const period=monthSummary(selected.key).label.replace(' · MTD','');
   el('statementTitle').textContent=isNatwest?'NatWest bank statement':`${period} Lloyds bank statement`;
   el('statementBank').textContent=isNatwest?'NatWest':'Lloyds';
   el('statementPeriod').textContent=isNatwest?'As supplied by NatWest':period;
@@ -614,7 +626,7 @@ function refreshMonthControls(){
   const allSelected=currentPage!=='statements'&&availableMonths.length>0&&availableMonths.every(month=>selectedMonths.includes(month));
   const allControl=currentPage==='statements'?'':`<button type="button" class="all-months-control ${allSelected?'selected':''}" id="allMonthsButton" aria-pressed="${allSelected}" title="Select every available month">All</button>`;
   picker.innerHTML=allControl+monthNames.map(month=>{const available=monthAvailable(month),checked=selectedMonths.includes(month);return `<label title="${available?'':'No transaction recorded for this month'}"><input type="checkbox" value="${month}" ${checked?'checked':''} ${available?'':'disabled'}><span>${month.slice(0,3)}</span></label>`}).join('');
-  el('monthSelect').innerHTML=monthNames.map(month=>{const available=monthAvailable(month);return `<option value="${month}" ${available?'':'disabled'}>${month} ${selectedYear}${month==='August'?' · MTD':''}</option>`}).join('');
+  el('monthSelect').innerHTML=monthNames.map(month=>{const available=monthAvailable(month),label=monthSummary(month).label;return `<option value="${month}" ${available?'':'disabled'}>${label}</option>`}).join('');
   el('monthSelect').value=selectedMonths[0]||'August';
   if(currentPage!=='statements'){
     const allOption=document.createElement('option');
@@ -634,11 +646,11 @@ el('monthSelect').addEventListener('change',event=>{
   if(event.target.value==='all'&&currentPage!=='statements'){
     const availableMonths=monthNames.filter(month=>monthAvailable(month));
     selectedMonths=availableMonths;
-    selected=statements.find(s=>s.key===availableMonths[0])||{key:availableMonths[0]||'',label:`${selectedYear}`,days:30,in:0,out:0};
+    selected=statementFor(availableMonths[0],selectedYear)||{key:availableMonths[0]||'',label:`${selectedYear}`,days:30,in:0,out:0};
     render();
     return;
   }
-  selected=statements.find(s=>s.key===event.target.value);
+  selected=statementFor(event.target.value,selectedYear);
   if(!selected)selected={key:event.target.value,label:`${event.target.value} ${selectedYear}`,days:30,in:0,out:0};
   selectedMonths=[selected.key];
   el('monthPicker').querySelectorAll('input').forEach(input=>input.checked=input.value===selected.key);
@@ -649,7 +661,7 @@ el('monthPicker').addEventListener('change',event=>{
   if(currentPage==='statements'){
     selectedMonths=[event.target.value];
     el('monthPicker').querySelectorAll('input').forEach(input=>input.checked=input.value===event.target.value);
-    selected=statements.find(s=>s.key===event.target.value)||{key:event.target.value,label:`${event.target.value} ${selectedYear}`,days:30,in:0,out:0};
+    selected=statementFor(event.target.value,selectedYear)||{key:event.target.value,label:`${event.target.value} ${selectedYear}`,days:30,in:0,out:0};
   }else selectedMonths=[...el('monthPicker').querySelectorAll('input:checked')].map(input=>input.value);
   render();
 });

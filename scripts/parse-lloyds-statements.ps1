@@ -108,6 +108,10 @@ foreach ($statement in $statementFiles) {
   $expectedIn = [decimal]::Parse(($Matches.total -replace ',', ''), [Globalization.CultureInfo]::InvariantCulture)
   $null = $summaryOutLine -match '^\s*Money Out\s+.*?\p{Sc}(?<total>[\d,]+\.\d{2})'
   $expectedOut = [decimal]::Parse(($Matches.total -replace ',', ''), [Globalization.CultureInfo]::InvariantCulture)
+  if ($summaryOutLine -notmatch 'Balance on\s+(?<day>\d{1,2})\s+[A-Za-z]+\s+20\d{2}') {
+    throw "Could not read the statement end date from '$($statement.File.Name)'."
+  }
+  $statementDays = [int]$Matches.day
   $actualIn = [decimal](($statementTransactions | Where-Object direction -eq 'in' | Measure-Object amount -Sum).Sum)
   $actualOut = [decimal](($statementTransactions | Where-Object direction -eq 'out' | Measure-Object amount -Sum).Sum)
 
@@ -117,6 +121,10 @@ foreach ($statement in $statementFiles) {
 
   $validation.Add([pscustomobject]@{
     Statement = $statement.File.Name
+    Month = $statement.Month
+    Year = $statement.Year
+    File = "LLoyds/$($statement.File.Name)"
+    Days = $statementDays
     Rows = $statementTransactions.Count
     MoneyIn = $actualIn
     MoneyOut = $actualOut
@@ -130,6 +138,9 @@ if (-not (Test-Path -LiteralPath $outputDirectory)) {
 }
 
 $json = $transactions | ConvertTo-Json -Compress -Depth 4
-[IO.File]::WriteAllText($outputPath, "window.transactionData = $json;`n", [Text.UTF8Encoding]::new($false))
-$validation | Format-Table -AutoSize
+$metaJson = @($validation | ForEach-Object {
+  [ordered]@{ month = $_.Month; year = $_.Year; file = $_.File; days = $_.Days; rows = $_.Rows; moneyIn = $_.MoneyIn; moneyOut = $_.MoneyOut }
+}) | ConvertTo-Json -Compress -Depth 4
+[IO.File]::WriteAllText($outputPath, "window.transactionData = $json;`nwindow.lloydsStatementMeta = $metaJson;`n", [Text.UTF8Encoding]::new($false))
+$validation | Select-Object Statement, Rows, MoneyIn, MoneyOut | Format-Table -AutoSize
 Write-Output "Parsed and validated $($transactions.Count) Lloyds transactions."

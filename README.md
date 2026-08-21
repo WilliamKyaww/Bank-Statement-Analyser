@@ -66,6 +66,8 @@ With Poppler's `pdftotext` command installed, rebuild and validate both private 
 
 The Lloyds parser reads every page of every `YYYY_Month_Statement.pdf` file and refuses to update the data unless its transaction totals exactly match the Money In and Money Out figures printed on each PDF.
 
+Run the refresh command whenever a statement PDF is added or replaced. It also regenerates Lloyds statement metadata (file, year, month, statement end day and verified totals), which keeps the Overview, charts and MTD labels aligned with the latest version of an in-progress statement.
+
 NatWest statements contain both incoming and outgoing `Mobile/Online Transaction` rows. The NatWest parser determines their direction from the signed amount in the PDF: values prefixed with a minus sign are money out, while unsigned values are money in. To refresh a specific NatWest file separately, use:
 
 ```powershell
