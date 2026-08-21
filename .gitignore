@@ -4,6 +4,7 @@ Natwest/
 **/*.pdf
 transactions-data.js
 natwest-data.js
+category-keywords.json
 
 # Local browser/build/editor files
 .DS_Store

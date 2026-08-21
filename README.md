@@ -8,7 +8,7 @@ A local, browser-based dashboard for viewing and analysing bank statement transa
 
 Bank statements and extracted transactions are private. They are intentionally excluded from Git by `.gitignore`. Keep the `LLoyds` and `Natwest` folders on your computer, but do not force-add them to a commit.
 
-The app works with local files and does not need a backend. Open `index.html` in a browser after adding your private statement files.
+The dashboard can still be opened directly from `index.html`. To persist editable keywords into the repository as well as the browser, use the included local server described below.
 
 ## Bank statement folder layout
 
@@ -49,10 +49,20 @@ The Statements page also lets you attach a PDF and choose whether it is Lloyds o
 ## Running it
 
 1. Add your private PDFs to `LLoyds/` or `Natwest/`.
-2. Open `index.html` in a browser.
-3. Use the bank, year, month, and money-in/money-out filters.
-4. Use the Statements page to read the original PDF.
-5. Use the Keywords page to update merchant categorisation rules.
+2. Start the dependency-free local server:
+
+   ```powershell
+   node .\scripts\local-server.js
+   ```
+
+3. Open `http://127.0.0.1:8000` in your browser.
+4. Use the bank, year, month, and money-in/money-out filters.
+5. Use the Statements page to read the original PDF.
+6. Use the Keywords page to update merchant categorisation rules.
+
+The server only listens on your computer. Keyword changes are written to `category-keywords.json` and also retained in browser storage. The JSON file is excluded by `.gitignore`, so merchant rules remain local. If the page is opened directly through `file://` without the server running, keyword editing still works but only the browser copy can be updated.
+
+If you already have customised keywords in a `file://` browser tab, start the server and refresh that existing tab once before switching to `http://127.0.0.1:8000`. The app will migrate that browser copy into `category-keywords.json`; the local API accepts the migration only from local pages.
 
 If you add a new statement format or want new PDFs to contribute to the charts, update the local transaction extraction data without committing it.
 

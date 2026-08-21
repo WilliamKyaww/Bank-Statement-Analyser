@@ -781,10 +781,77 @@ el('navToggle').addEventListener('click',()=>{
 
 /* ------------------------------------------------------------- keywords --- */
 
+const keywordRepositoryApi=location.protocol==='file:'
+  ?'http://127.0.0.1:8000/api/keywords'
+  :location.protocol==='http:'&&['127.0.0.1','localhost'].includes(location.hostname)
+    ?'/api/keywords'
+    :null;
+let keywordSaveQueue=Promise.resolve();
+let keywordStatusTimer=null;
+
+function validCategoryKeywordData(value){
+  return value&&typeof value==='object'&&!Array.isArray(value)&&Object.entries(value).length>0&&
+    Object.entries(value).every(([category,keywords])=>category.trim()&&Array.isArray(keywords)&&
+      keywords.every(keyword=>typeof keyword==='string'&&keyword.trim()));
+}
+
+function setKeywordStatus(message,resetMessage=null){
+  clearTimeout(keywordStatusTimer);
+  el('keywordSaved').textContent=message;
+  if(resetMessage)keywordStatusTimer=setTimeout(()=>el('keywordSaved').textContent=resetMessage,1400);
+}
+
+async function persistRepositoryKeywords(keywords){
+  if(!keywordRepositoryApi)return false;
+  const response=await fetch(keywordRepositoryApi,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({keywords})
+  });
+  if(!response.ok)throw new Error(`Keyword repository save failed (${response.status})`);
+  return true;
+}
+
 function saveCategoryKeywords(){
   localStorage.setItem('categoryKeywords',JSON.stringify(categoryKeywords));
-  el('keywordSaved').textContent='Saved just now';
-  setTimeout(()=>el('keywordSaved').textContent='Saved in this browser',1200);
+  if(!keywordRepositoryApi){
+    setKeywordStatus('Saved just now','Saved in this browser');
+    return;
+  }
+  const snapshot=JSON.parse(JSON.stringify(categoryKeywords));
+  setKeywordStatus('Saving to repository…');
+  keywordSaveQueue=keywordSaveQueue
+    .then(()=>persistRepositoryKeywords(snapshot))
+    .then(()=>setKeywordStatus('Saved just now','Saved in repository and browser'))
+    .catch(error=>{
+      console.error(error);
+      setKeywordStatus('Repository save failed · saved in browser');
+    });
+}
+
+async function loadRepositoryKeywords(){
+  if(!keywordRepositoryApi)return;
+  try{
+    const response=await fetch(keywordRepositoryApi,{cache:'no-store'});
+    if(response.status===204){
+      if(location.protocol==='file:'){
+        await persistRepositoryKeywords(categoryKeywords);
+        setKeywordStatus('Migrated to repository and saved');
+      }else setKeywordStatus('Repository ready · changes will be saved');
+      return;
+    }
+    if(!response.ok)throw new Error(`Keyword repository load failed (${response.status})`);
+    const payload=await response.json();
+    if(!validCategoryKeywordData(payload.keywords))throw new Error('Keyword repository data is invalid');
+    categoryKeywords=payload.keywords;
+    localStorage.setItem('categoryKeywords',JSON.stringify(categoryKeywords));
+    renderKeywordManager();
+    render();
+    setKeywordStatus('Loaded from repository');
+  }catch(error){
+    console.error(error);
+    setKeywordStatus('Repository unavailable · using browser copy');
+  }
 }
 
 el('keywordManager').addEventListener('click',event=>{
@@ -821,6 +888,7 @@ el('keywordManager').addEventListener('click',event=>{
 renderKeywordManager();
 routeFromHash();
 render();
+loadRepositoryKeywords();
 
 addEventListener('resize',drawCharts);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
